@@ -1,0 +1,106 @@
+---
+title: "Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#I-) Essential Packages
+```{r}
+IscaretInstalled <- require("caret")
+if(!IscaretInstalled){
+    install.packages("caret")
+    library("caret")
+    }
+
+IsrandomForestInstalled <- require("randomForest")
+if(!IsrandomForestInstalled){
+    install.packages("randomForest")
+    library("randomForest")
+    }
+
+IsRpartInstalled <- require("rpart")        
+if(!IsRpartInstalled){
+    install.packages("rpart")
+    library("rpart")
+    }
+
+#set seed for reproducability
+set.seed(20000)
+```
+
+#II-) Data Processing
+Load the data
+```{r}
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"   
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" 
+```
+
+#III-)Cleaning data 
+Load data to memory.
+```{r}
+training <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))  
+testing <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+
+#Remove variables with near zero variance
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+
+#Remove columns that are not predictors, which are the the seven first columns
+training   <-training[,-c(1:7)]
+testing <-testing[,-c(1:7)]
+
+# The data after cleaning
+dim(training)
+dim(testing)
+```
+#IV-) Cross-validation
+In order to get out-of-sample errors, split the training data in training (75%) and testing (25%) data) subsets:
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.75, list=FALSE)    
+NEOTraining <- training[inTrain, ]
+NEOTesting <- training[-inTrain, ]  
+dim(NEOTraining)
+dim(NEOTesting) 
+```
+
+#V-) Prediction Models
+
+DECISION TREE
+Fit model on NEOTraining data
+```{r}
+fitDT <- rpart(classe ~ ., data=NEOTraining, method="class")
+```
+Use model to predict class in validation set (NEOTesting)
+```{r}
+predictionDT <- predict(fitDT, NEOTesting, type = "class")
+```
+Estimate the errors of the prediction algorithm in the Decision Tree model
+```{r}
+NEOTesting$classe <- as.factor(NEOTesting$classe)
+confusionMatrix(predictionDT,NEOTesting$classe)
+```
+
+RANDOM FOREST
+Fit model on NEOTraining data
+```{r}
+NEOTraining$classe <- as.factor(NEOTraining$classe)
+fitRF <- randomForest(classe ~ ., data=NEOTraining, method="class")
+```
+Use model to predict class in validation set (NEOTesting)
+```{r}
+predictionRF <- predict(fitRF, NEOTesting, type = "class")
+```
+Estimate the errors of the prediction algorithm in the Random Forest
+```{r}
+confusionMatrix(NEOTesting$classe, predictionRF)
+```
+
+#VI-) TEST THE MODEL TO PREDICT 20 DIFFERENT TEST CASES
+# Perform prediction
+```{r}
+predictSubmission <- predict(fitRF, testing, type="class")
+predictSubmission
+```
